@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/* Warna dari mockup yang sudah disetujui */
+@theme {
+  --color-navy: #1f3a5f;
+  --color-navy-dark: #172d4a;
+  --color-teal: #0f766e;
+  --color-teal-dark: #0b5e58;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: #f5f7fa;
+  color: #1e293b;
+}
