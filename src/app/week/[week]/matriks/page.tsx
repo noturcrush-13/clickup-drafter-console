@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { WeekPicker } from "@/components/week-picker";
+import { getLatestJob } from "@/lib/jobs";
 import { getSupabase } from "@/lib/supabase";
-import type { ActivityRow, SourceRow, SourceType, WeekRow } from "@/lib/types";
+import type { ActivityRow, JobRow, SourceRow, SourceType, WeekRow } from "@/lib/types";
 import { formatWeekParam, parseWeekParam } from "@/lib/week";
 import { MATRIX_GRID, MatrixRow, type MatrixRowData } from "./matrix-row";
+import { N8nPanel } from "./n8n-panel";
 
 const COLUMNS = ["Activity", "Gaya", "Fathom", "MoM", "Slide", "Tracker", "ClickUp lalu", ""];
 
@@ -45,6 +47,14 @@ export default async function MatriksPage({ params }: { params: Promise<{ week: 
     .maybeSingle<WeekRow>();
   if (weekError) throw new Error(`Gagal membaca week: ${weekError.message}`);
 
+  const { data: settings, error: settingsError } = await db
+    .from("settings")
+    .select("auto_run")
+    .eq("id", 1)
+    .maybeSingle<{ auto_run: boolean }>();
+  if (settingsError) throw new Error(`Gagal membaca pengaturan: ${settingsError.message}`);
+  const latestJob: JobRow | null = week ? await getLatestJob(week.id) : null;
+
   let rows: MatrixRowData[] = [];
   if (week) {
     const { data: activities, error } = await db
@@ -73,6 +83,8 @@ export default async function MatriksPage({ params }: { params: Promise<{ week: 
         <h1 className="text-2xl font-semibold text-slate-900">Matriks sumber</h1>
         <WeekPicker isoWeek={isoWeek} suffix="/matriks" />
       </header>
+
+      <N8nPanel week={weekParam} initialAutoRun={settings?.auto_run ?? false} initialJob={latestJob} />
 
       {rows.length === 0 ? (
         <p className="rounded-md border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
