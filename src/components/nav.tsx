@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
+import { Spinner } from "./spinner";
 import { usePathname } from "next/navigation";
 
 // Ambil week dari URL (mis. /week/2026-W44/matriks) supaya pindah menu tetap di week yang sama.
@@ -42,15 +43,22 @@ export function Nav() {
             <Link
               href={item.href}
               aria-current={item.active ? "page" : undefined}
-              className={`flex min-h-11 items-center justify-center px-3 text-sm font-medium md:justify-start md:rounded-md ${
+              className={`flex min-h-11 items-center justify-center gap-2 px-3 text-sm font-medium md:justify-start md:rounded-md ${
                 item.active ? "bg-white/15" : "text-white/80 hover:bg-white/10"
               }`}
             >
               {item.label}
+              <PendingIndicator />
             </Link>
           </li>
         ))}
       </ul>
     </nav>
   );
+}
+
+// Spinner kecil di menu yang baru diklik, selama halaman tujuannya dimuat.
+function PendingIndicator() {
+  const { pending } = useLinkStatus();
+  return pending ? <Spinner className="size-3.5" /> : null;
 }

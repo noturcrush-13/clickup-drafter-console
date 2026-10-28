@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Spinner } from "@/components/spinner";
 import type { StyleMode } from "@/lib/types";
 import { type MatrixRowInput, saveMatrixRowAction } from "./actions";
 
@@ -111,9 +112,15 @@ export function MatrixRow({ name, divisi, initial }: MatrixRowData) {
           type="button"
           onClick={save}
           disabled={pending || !dirty}
-          className="min-h-11 w-full rounded-md bg-teal px-3 text-sm font-semibold text-white hover:bg-teal-dark disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center gap-2 w-full rounded-md bg-teal px-3 text-sm font-semibold text-white hover:bg-teal-dark disabled:opacity-50"
         >
-          {pending ? "Menyimpan…" : "Simpan"}
+          {pending ? (
+            <>
+              <Spinner /> Menyimpan…
+            </>
+          ) : (
+            "Simpan"
+          )}
         </button>
         {status && (
           <p role="status" className={`text-xs ${status.ok ? "text-teal-dark" : "text-red-700"}`}>

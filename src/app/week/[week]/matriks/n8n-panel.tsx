@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { Spinner } from "@/components/spinner";
 import type { JobRow, JobStatus } from "@/lib/types";
 import { runNowAction, setAutoRunAction } from "./n8n-actions";
 
@@ -84,9 +85,15 @@ export function N8nPanel({ week, initialAutoRun, initialJob }: Props) {
           type="button"
           onClick={runNow}
           disabled={running || busy}
-          className="min-h-11 rounded-md bg-teal px-4 text-sm font-semibold text-white hover:bg-teal-dark disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-teal px-4 text-sm font-semibold text-white hover:bg-teal-dark disabled:opacity-50"
         >
-          {running ? "Membuat job…" : "Jalankan sekarang"}
+          {running ? (
+            <>
+              <Spinner /> Membuat job…
+            </>
+          ) : (
+            "Jalankan sekarang"
+          )}
         </button>
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { startTransition, useActionState } from "react";
+import { Spinner } from "@/components/spinner";
 import type { SettingsRow } from "@/lib/types";
 import { saveSettingsAction } from "./actions";
 
@@ -82,9 +83,15 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
         <button
           type="submit"
           disabled={pending}
-          className="min-h-11 rounded-md bg-teal px-5 text-sm font-semibold text-white hover:bg-teal-dark disabled:opacity-60"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-teal px-5 text-sm font-semibold text-white hover:bg-teal-dark disabled:opacity-60"
         >
-          {pending ? "Menyimpan…" : "Simpan pengaturan"}
+          {pending ? (
+            <>
+              <Spinner /> Menyimpan…
+            </>
+          ) : (
+            "Simpan pengaturan"
+          )}
         </button>
         {result && (
           <p role="status" className={`text-sm ${result.ok ? "text-teal-dark" : "text-red-700"}`}>

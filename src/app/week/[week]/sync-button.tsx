@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Spinner } from "@/components/spinner";
 import { syncAction } from "./actions";
 
 export function SyncButton({ week }: { week: string }) {
@@ -13,12 +14,19 @@ export function SyncButton({ week }: { week: string }) {
         <button
           type="submit"
           disabled={pending}
-          className="min-h-11 rounded-md bg-teal px-4 text-sm font-semibold text-white hover:bg-teal-dark disabled:opacity-60"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-teal px-4 text-sm font-semibold text-white hover:bg-teal-dark disabled:opacity-60"
         >
-          {pending ? "Menyinkron…" : "Sinkron dari ClickUp"}
+          {pending ? (
+            <>
+              <Spinner /> Menyinkron…
+            </>
+          ) : (
+            "Sinkron dari ClickUp"
+          )}
         </button>
       </form>
-      {result && (
+      {pending && <p className="text-sm text-slate-500">Mengambil task dari ClickUp, biasanya beberapa detik…</p>}
+      {!pending && result && (
         <p
           role="status"
           className={`max-w-md text-sm ${result.ok ? "text-teal-dark" : "text-red-700"}`}
