@@ -24,7 +24,6 @@ const settingsSchema = z.object({
         .map((line) => line.trim())
         .filter(Boolean),
     ),
-  output_format: z.string().max(20000),
   secret_keywords: z
     .string()
     .trim()

@@ -22,28 +22,18 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
     <form onSubmit={handleSubmit} className="space-y-5 rounded-md border border-slate-200 bg-white p-4 md:p-6">
       <div className="space-y-1">
         <label htmlFor="style_rules" className={labelClass}>
-          Aturan gaya penulisan
+          Aturan tambahan untuk agent
         </label>
-        <p className={hintClass}>Satu aturan per baris.</p>
+        <p className={hintClass}>
+          Satu aturan per baris, misalnya koreksi yang sering Anda ulang. Aturan utama sudah ada di agent Hermes.
+        </p>
         <textarea
           id="style_rules"
           name="style_rules"
-          rows={14}
+          rows={10}
           className={fieldClass}
+          placeholder={"Contoh:\nTulis nama sistem dengan huruf besar: IKK, bukan ikk.\nJangan menyebut nama vendor di Hambatan."}
           defaultValue={(settings.style_rules ?? []).join("\n")}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <label htmlFor="output_format" className={labelClass}>
-          Format output
-        </label>
-        <textarea
-          id="output_format"
-          name="output_format"
-          rows={6}
-          className={fieldClass}
-          defaultValue={settings.output_format ?? ""}
         />
       </div>
 

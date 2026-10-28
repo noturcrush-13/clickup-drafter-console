@@ -17,9 +17,12 @@ export default async function PengaturanPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold text-slate-900">Pengaturan</h1>
-        <p className="text-sm text-slate-500">
-          PIC Lead: <span className="font-semibold text-slate-700">{settings?.pic_lead_name ?? "—"}</span>
-        </p>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm text-slate-500">
+          <dt>PIC Lead</dt>
+          <dd className="font-semibold text-slate-700">{settings?.pic_lead_name ?? "—"}</dd>
+          <dt>Sumber panduan</dt>
+          <dd className="break-all font-semibold text-slate-700">{settings?.guide_source ?? "—"}</dd>
+        </dl>
       </header>
 
       {settings ? (

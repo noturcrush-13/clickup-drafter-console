@@ -40,7 +40,7 @@ export type SettingsRow = {
   id: number;
   auto_run: boolean;
   style_rules: string[] | null;
-  output_format: string | null;
+  guide_source: string | null;
   secret_keywords: string | null;
   notify_email: string | null;
   web_base_url: string | null;
