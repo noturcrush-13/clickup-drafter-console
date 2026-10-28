@@ -1,0 +1,18 @@
+# Rahasia: semua file env diabaikan, kecuali contoh tanpa nilai
+.env*
+!.env.example
+
+# Dependensi dan hasil build
+node_modules
+.next
+out
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Log dan file sistem
+npm-debug.log*
+.DS_Store
+Thumbs.db
