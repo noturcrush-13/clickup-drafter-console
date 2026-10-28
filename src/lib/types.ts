@@ -19,7 +19,7 @@ export type ActivityRow = {
   week_id: string;
   clickup_task_id: string;
   name: string;
-  project: string | null;
+  project: string | null; // berisi Divisi (field ClickUp "7. Divisi")
   assignee_names: string | null;
   assigned_to_me: boolean;
   selected: boolean;

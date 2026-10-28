@@ -7,9 +7,9 @@ import { type MatrixRowInput, saveMatrixRowAction } from "./actions";
 export const MATRIX_GRID =
   "lg:grid lg:grid-cols-[minmax(10rem,1.3fr)_6.5rem_minmax(9rem,1fr)_minmax(9rem,1fr)_minmax(9rem,1fr)_minmax(7rem,0.8fr)_5rem_6rem] lg:items-start lg:gap-3";
 
-export type MatrixRowData = { name: string; project: string | null; initial: MatrixRowInput };
+export type MatrixRowData = { name: string; divisi: string | null; initial: MatrixRowInput };
 
-export function MatrixRow({ name, project, initial }: MatrixRowData) {
+export function MatrixRow({ name, divisi, initial }: MatrixRowData) {
   const [row, setRow] = useState(initial);
   const [dirty, setDirty] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
@@ -44,7 +44,7 @@ export function MatrixRow({ name, project, initial }: MatrixRowData) {
     <li className={`space-y-3 p-4 lg:space-y-0 lg:px-3 lg:py-3 ${MATRIX_GRID}`}>
       <div>
         <p className="font-medium text-slate-900">{name}</p>
-        {project && <p className="text-xs text-slate-500">{project}</p>}
+        {divisi && <p className="text-xs text-slate-500">Divisi {divisi}</p>}
       </div>
 
       <Cell label="Gaya">

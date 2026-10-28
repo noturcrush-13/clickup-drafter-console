@@ -3,6 +3,7 @@ import { getEnv } from "./env";
 
 const BASE_URL = "https://api.clickup.com/api/v2";
 export const PIC_LEAD_FIELD_ID = "e77a8ae0-1deb-4ea9-af5e-4f8d5d926bdc";
+export const DIVISI_FIELD_ID = "a9c9ee16-6044-4c9d-a789-bce6999e3c00";
 
 type DropdownOption = { id: string; name: string; orderindex: number | string };
 
@@ -72,18 +73,10 @@ export function getField(task: ClickUpTask, fieldId: string): ClickUpField | und
   return task.custom_fields?.find((field) => field.id === fieldId);
 }
 
-// Kolom "project": custom field pertama yang namanya mengandung "project" dan berisi nilai.
-export function readProject(task: ClickUpTask): string | null {
-  for (const field of task.custom_fields ?? []) {
-    if (!/project/i.test(field.name)) continue;
-    if (field.type === "drop_down") {
-      const option = resolveDropdown(field);
-      if (option) return option.name;
-    } else if (typeof field.value === "string" && field.value.trim()) {
-      return field.value.trim();
-    }
-  }
-  return null;
+// Nama opsi field "7. Divisi" (drop_down), mis. "SMT".
+export function readDivisi(task: ClickUpTask): string | null {
+  const field = getField(task, DIVISI_FIELD_ID);
+  return field ? (resolveDropdown(field)?.name ?? null) : null;
 }
 
 export function readAssigneeNames(task: ClickUpTask): string | null {

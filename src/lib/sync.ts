@@ -5,7 +5,7 @@ import {
   findWeekList,
   getField,
   readAssigneeNames,
-  readProject,
+  readDivisi,
   resolveDropdown,
 } from "./clickup";
 import { getSupabase } from "./supabase";
@@ -91,7 +91,7 @@ export async function syncWeek(isoWeek: IsoWeek): Promise<SyncResult> {
       week_id: week.id as string,
       clickup_task_id: task.id,
       name: task.name,
-      project: readProject(task),
+      project: readDivisi(task), // kolom "project" dipakai untuk menyimpan Divisi
       assignee_names: picOption?.name ?? readAssigneeNames(task),
       assigned_to_me: Boolean(myOptionId && picOption?.id === myOptionId),
       sort_order: index,

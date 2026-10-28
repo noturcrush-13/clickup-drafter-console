@@ -17,7 +17,7 @@ function toRowData(activity: ActivityRow, sources: SourceRow[]): MatrixRowData {
 
   return {
     name: activity.name,
-    project: activity.project,
+    divisi: activity.project,
     initial: {
       activityId: activity.id,
       styleMode: activity.style_mode,

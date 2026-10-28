@@ -71,15 +71,15 @@ export function ActivityTable({ activities }: { activities: ActivityRow[] }) {
         </p>
       ) : (
         <ul className="divide-y divide-slate-200 overflow-hidden rounded-md border border-slate-200 bg-white">
-          <li className="hidden grid-cols-[3rem_1fr_12rem_10rem] gap-3 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase text-slate-500 md:grid">
+          <li className="hidden grid-cols-[3rem_1fr_8rem_10rem] gap-3 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase text-slate-500 md:grid">
             <span>Pilih</span>
             <span>Activity</span>
-            <span>Project</span>
+            <span>Divisi</span>
             <span>PIC 1a</span>
           </li>
           {visible.map((activity) => (
             <li key={activity.id}>
-              <label className="grid cursor-pointer grid-cols-[3rem_1fr] items-center gap-x-3 gap-y-1 px-3 py-2 hover:bg-slate-50 md:grid-cols-[3rem_1fr_12rem_10rem]">
+              <label className="grid cursor-pointer grid-cols-[3rem_1fr] items-center gap-x-3 gap-y-1 px-3 py-2 hover:bg-slate-50 md:grid-cols-[3rem_1fr_8rem_10rem]">
                 <span className="row-span-2 flex size-11 items-center justify-center md:row-span-1">
                   <input
                     type="checkbox"
