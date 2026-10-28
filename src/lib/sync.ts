@@ -29,7 +29,7 @@ const normalizeName = (name: string) => name.trim().toLowerCase();
 
 type DbResult = { data: unknown; error: { message: string } | null };
 
-// Untuk query yang boleh kosong (maybeSingle).
+// Hanya cek error: untuk maybeSingle dan perintah tulis tanpa .select() (data-nya memang null).
 function checkMaybe<R extends DbResult>(result: R, what: string): R["data"] {
   if (result.error) throw new Error(`Gagal ${what}: ${result.error.message}`);
   return result.data;
@@ -109,7 +109,7 @@ export async function syncWeek(isoWeek: IsoWeek): Promise<SyncResult> {
 
   // 3. Activity lama: perbarui data dari ClickUp, tetapi JANGAN sentuh selected dan style_mode.
   if (updates.length > 0) {
-    check(
+    checkMaybe(
       await db.from("activities").upsert(updates, { onConflict: "week_id,clickup_task_id" }),
       "memperbarui activity",
     );
@@ -139,7 +139,7 @@ export async function syncWeek(isoWeek: IsoWeek): Promise<SyncResult> {
       const template = copied && copied.length > 0 ? copied : DEFAULT_SOURCES;
       return template.map((source) => ({ ...source, activity_id: activity.id as string }));
     });
-    check(await db.from("activity_sources").insert(sourceRows), "menambah sumber activity");
+    checkMaybe(await db.from("activity_sources").insert(sourceRows), "menambah sumber activity");
   }
 
   return {
