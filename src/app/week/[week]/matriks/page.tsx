@@ -1,14 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { WeekPicker } from "@/components/week-picker";
-import { getLatestJob } from "@/lib/jobs";
+import { JOB_COLUMNS } from "@/lib/jobs";
 import { getSupabase } from "@/lib/supabase";
-import type { ActivityRow, JobRow, SourceRow, SourceType, WeekRow } from "@/lib/types";
+import type { ActivityRow, JobRow, SourceRow, SourceType } from "@/lib/types";
 import { formatWeekParam, parseWeekParam } from "@/lib/week";
 import { MATRIX_GRID, MatrixRow, type MatrixRowData } from "./matrix-row";
 import { N8nPanel } from "./n8n-panel";
 
 const COLUMNS = ["Activity", "Gaya", "Fathom", "MoM", "Slide", "Tracker", "ClickUp lalu", ""];
+
+type MatrixWeek = {
+  id: string;
+  activities: (ActivityRow & { activity_sources: SourceRow[] })[];
+  jobs: JobRow[];
+};
 
 function toRowData(activity: ActivityRow, sources: SourceRow[]): MatrixRowData {
   const find = (type: SourceType) => sources.find((source) => source.source_type === type);
@@ -39,43 +45,27 @@ export default async function MatriksPage({ params }: { params: Promise<{ week: 
   const weekParam = formatWeekParam(isoWeek);
 
   const db = getSupabase();
-  const { data: week, error: weekError } = await db
-    .from("weeks")
-    .select("*")
-    .eq("iso_year", isoWeek.year)
-    .eq("iso_week", isoWeek.week)
-    .maybeSingle<WeekRow>();
-  if (weekError) throw new Error(`Gagal membaca week: ${weekError.message}`);
+  // Dua query paralel. Query pertama mengambil week + activity terpilih + sumbernya + job terakhir sekaligus.
+  const [weekResult, settingsResult] = await Promise.all([
+    db
+      .from("weeks")
+      .select(`id, activities(*, activity_sources(*)), jobs(${JOB_COLUMNS})`)
+      .eq("iso_year", isoWeek.year)
+      .eq("iso_week", isoWeek.week)
+      .eq("activities.selected", true)
+      .order("sort_order", { referencedTable: "activities" })
+      .order("requested_at", { referencedTable: "jobs", ascending: false })
+      .limit(1, { referencedTable: "jobs" })
+      .maybeSingle<MatrixWeek>(),
+    db.from("settings").select("auto_run").eq("id", 1).maybeSingle<{ auto_run: boolean }>(),
+  ]);
+  if (weekResult.error) throw new Error(`Gagal membaca week: ${weekResult.error.message}`);
+  if (settingsResult.error) throw new Error(`Gagal membaca pengaturan: ${settingsResult.error.message}`);
 
-  const { data: settings, error: settingsError } = await db
-    .from("settings")
-    .select("auto_run")
-    .eq("id", 1)
-    .maybeSingle<{ auto_run: boolean }>();
-  if (settingsError) throw new Error(`Gagal membaca pengaturan: ${settingsError.message}`);
-  const latestJob: JobRow | null = week ? await getLatestJob(week.id) : null;
-
-  let rows: MatrixRowData[] = [];
-  if (week) {
-    const { data: activities, error } = await db
-      .from("activities")
-      .select("*")
-      .eq("week_id", week.id)
-      .eq("selected", true)
-      .order("sort_order");
-    if (error) throw new Error(`Gagal membaca activity: ${error.message}`);
-
-    const ids = (activities as ActivityRow[]).map((activity) => activity.id);
-    let sources: SourceRow[] = [];
-    if (ids.length > 0) {
-      const result = await db.from("activity_sources").select("*").in("activity_id", ids);
-      if (result.error) throw new Error(`Gagal membaca sumber: ${result.error.message}`);
-      sources = result.data as SourceRow[];
-    }
-    rows = (activities as ActivityRow[]).map((activity) =>
-      toRowData(activity, sources.filter((source) => source.activity_id === activity.id)),
-    );
-  }
+  const week = weekResult.data;
+  const settings = settingsResult.data;
+  const latestJob = week?.jobs[0] ?? null;
+  const rows = (week?.activities ?? []).map((activity) => toRowData(activity, activity.activity_sources));
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">

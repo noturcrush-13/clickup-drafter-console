@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { findWeekId, getLatestJob } from "@/lib/jobs";
+import { getLatestJobForWeek } from "@/lib/jobs";
 import { parseWeekParam } from "@/lib/week";
 
 const querySchema = z.object({ week: z.string().regex(/^\d{4}-W\d{2}$/) });
@@ -12,8 +12,7 @@ export async function GET(request: NextRequest) {
   if (!isoWeek) return NextResponse.json({ error: "Parameter week tidak valid." }, { status: 400 });
 
   try {
-    const weekId = await findWeekId(isoWeek);
-    const job = weekId ? await getLatestJob(weekId) : null;
+    const job = await getLatestJobForWeek(isoWeek);
     return NextResponse.json({ job }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal membaca job.";

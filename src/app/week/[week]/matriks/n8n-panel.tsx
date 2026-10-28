@@ -33,6 +33,7 @@ export function N8nPanel({ week, initialAutoRun, initialJob }: Props) {
   // Perbarui status job terakhir tiap 5 detik.
   useEffect(() => {
     const timer = setInterval(async () => {
+      if (document.visibilityState !== "visible") return; // tab tidak dilihat: lewati
       try {
         const res = await fetch(`/api/jobs/latest?week=${encodeURIComponent(week)}`, { cache: "no-store" });
         if (res.ok) setJob((await res.json()).job);

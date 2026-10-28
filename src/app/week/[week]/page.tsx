@@ -10,25 +10,16 @@ export default async function WeekPage({ params }: { params: Promise<{ week: str
   const isoWeek = parseWeekParam((await params).week);
   if (!isoWeek) notFound();
 
-  const db = getSupabase();
-  const { data: week, error: weekError } = await db
+  // Satu query: week beserta activity-nya (embed lewat foreign key activities.week_id).
+  const { data: week, error } = await getSupabase()
     .from("weeks")
-    .select("*")
+    .select("*, activities(*)")
     .eq("iso_year", isoWeek.year)
     .eq("iso_week", isoWeek.week)
-    .maybeSingle<WeekRow>();
-  if (weekError) throw new Error(`Gagal membaca week: ${weekError.message}`);
-
-  let activities: ActivityRow[] = [];
-  if (week) {
-    const { data, error } = await db
-      .from("activities")
-      .select("*")
-      .eq("week_id", week.id)
-      .order("sort_order");
-    if (error) throw new Error(`Gagal membaca activity: ${error.message}`);
-    activities = data as ActivityRow[];
-  }
+    .order("sort_order", { referencedTable: "activities" })
+    .maybeSingle<WeekRow & { activities: ActivityRow[] }>();
+  if (error) throw new Error(`Gagal membaca week: ${error.message}`);
+  const activities = week?.activities ?? [];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
