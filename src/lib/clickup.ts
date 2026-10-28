@@ -44,15 +44,16 @@ export async function findWeekList(weekNumber: number): Promise<ClickUpList | nu
   return lists.find((list) => pattern.test(list.name)) ?? null;
 }
 
-// Ambil semua task (maks. 100 per halaman), ulangi sampai halaman kosong.
+// Ambil semua task (maks. 100 per halaman), ulangi sampai halaman terakhir.
 export async function fetchAllTasks(listId: string): Promise<ClickUpTask[]> {
   const all: ClickUpTask[] = [];
   for (let page = 0; page < 50; page++) {
-    const { tasks } = await clickupGet<{ tasks: ClickUpTask[] }>(
+    const { tasks, last_page } = await clickupGet<{ tasks: ClickUpTask[]; last_page?: boolean }>(
       `/list/${listId}/task?include_closed=true&page=${page}`,
     );
-    if (tasks.length === 0) break;
     all.push(...tasks);
+    // ClickUp memberi last_page; bila ada, tidak perlu meminta halaman kosong tambahan.
+    if (tasks.length === 0 || last_page === true) break;
   }
   return all;
 }

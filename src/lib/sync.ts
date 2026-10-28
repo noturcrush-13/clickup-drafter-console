@@ -15,7 +15,7 @@ import { type IsoWeek, shiftWeek, weekRange } from "./week";
 export type SyncResult = { ok: boolean; message: string };
 
 type SourceTemplate = { source_type: SourceType; enabled: boolean; params: Record<string, unknown> };
-type PrevActivity = { id: string; name: string; style_mode: StyleMode };
+type PrevActivity = { style_mode: StyleMode; sources: SourceTemplate[] };
 
 const DEFAULT_SOURCES: SourceTemplate[] = [
   { source_type: "fathom", enabled: true, params: { keywords: [] } },
@@ -45,7 +45,12 @@ function check<R extends DbResult>(result: R, what: string): NonNullable<R["data
 export async function syncWeek(isoWeek: IsoWeek): Promise<SyncResult> {
   const db = getSupabase();
 
-  const list = await findWeekList(isoWeek.week);
+  // Tahap 1 (paralel): cari list ClickUp, baca pengaturan, dan ambil data week sebelumnya.
+  const [list, settingsResult, prevByName] = await Promise.all([
+    findWeekList(isoWeek.week),
+    db.from("settings").select("pic_lead_option_id").eq("id", 1).maybeSingle<{ pic_lead_option_id: string | null }>(),
+    loadPreviousWeek(shiftWeek(isoWeek, -1)),
+  ]);
   if (!list) {
     const nn = String(isoWeek.week).padStart(2, "0");
     return {
@@ -53,17 +58,12 @@ export async function syncWeek(isoWeek: IsoWeek): Promise<SyncResult> {
       message: `List "Week ${nn}" tidak ditemukan di folder ClickUp. Pastikan list minggu ini sudah dibuat, lalu coba lagi.`,
     };
   }
+  const myOptionId = checkMaybe(settingsResult, "membaca pengaturan")?.pic_lead_option_id ?? null;
 
-  const settings = checkMaybe(
-    await db.from("settings").select("pic_lead_option_id").eq("id", 1).maybeSingle(),
-    "membaca pengaturan",
-  );
-  const myOptionId: string | null = settings?.pic_lead_option_id ?? null;
-
-  // 1. Upsert baris week.
+  // Tahap 2 (paralel): simpan week (sekaligus ambil activity yang sudah ada) dan ambil task ClickUp.
   const range = weekRange(isoWeek);
-  const week = check(
-    await db
+  const [weekResult, tasks] = await Promise.all([
+    db
       .from("weeks")
       .upsert(
         {
@@ -76,19 +76,18 @@ export async function syncWeek(isoWeek: IsoWeek): Promise<SyncResult> {
         },
         { onConflict: "iso_year,iso_week" },
       )
-      .select("id")
-      .single(),
-    "menyimpan week",
-  );
+      .select("id, activities(clickup_task_id)")
+      .single<{ id: string; activities: { clickup_task_id: string }[] }>(),
+    fetchAllTasks(list.id),
+  ]);
+  const week = check(weekResult, "menyimpan week");
 
-  // 2. Ambil task dan ubah ke bentuk baris activity.
-  const tasks = await fetchAllTasks(list.id);
   const now = new Date().toISOString();
   const rows = tasks.map((task, index) => {
     const picField = getField(task, PIC_LEAD_FIELD_ID);
     const picOption = picField ? resolveDropdown(picField) : null;
     return {
-      week_id: week.id as string,
+      week_id: week.id,
       clickup_task_id: task.id,
       name: task.name,
       project: readDivisi(task), // kolom "project" dipakai untuk menyimpan Divisi
@@ -99,45 +98,38 @@ export async function syncWeek(isoWeek: IsoWeek): Promise<SyncResult> {
     };
   });
 
-  const existing = check(
-    await db.from("activities").select("clickup_task_id").eq("week_id", week.id),
-    "membaca activity",
-  );
-  const existingIds = new Set(existing.map((row) => row.clickup_task_id as string));
+  const existingIds = new Set(week.activities.map((activity) => activity.clickup_task_id));
   const updates = rows.filter((row) => existingIds.has(row.clickup_task_id));
   const inserts = rows.filter((row) => !existingIds.has(row.clickup_task_id));
 
-  // 3. Activity lama: perbarui data dari ClickUp, tetapi JANGAN sentuh selected dan style_mode.
-  if (updates.length > 0) {
-    checkMaybe(
-      await db.from("activities").upsert(updates, { onConflict: "week_id,clickup_task_id" }),
-      "memperbarui activity",
-    );
-  }
+  // Tahap 3 (paralel):
+  // - activity lama: perbarui data dari ClickUp, tetapi JANGAN sentuh selected dan style_mode;
+  // - activity baru: selected = milik saya, gaya disalin dari activity bernama sama di week sebelumnya.
+  const [updateResult, insertResult] = await Promise.all([
+    updates.length > 0
+      ? db.from("activities").upsert(updates, { onConflict: "week_id,clickup_task_id" })
+      : null,
+    inserts.length > 0
+      ? db
+          .from("activities")
+          .insert(
+            inserts.map((row) => ({
+              ...row,
+              selected: row.assigned_to_me,
+              style_mode: prevByName.get(normalizeName(row.name))?.style_mode ?? "saya",
+            })),
+          )
+          .select("id, name")
+      : null,
+  ]);
+  if (updateResult) checkMaybe(updateResult, "memperbarui activity");
 
-  // 4. Activity baru: salin gaya dan sumber dari activity bernama sama di week sebelumnya.
-  if (inserts.length > 0) {
-    const prev = await loadPreviousWeek(shiftWeek(isoWeek, -1));
-
-    const inserted = check(
-      await db
-        .from("activities")
-        .insert(
-          inserts.map((row) => ({
-            ...row,
-            selected: row.assigned_to_me,
-            style_mode: prev.activities.get(normalizeName(row.name))?.style_mode ?? "saya",
-          })),
-        )
-        .select("id, name"),
-      "menambah activity",
-    );
-
+  if (insertResult) {
+    const inserted = check(insertResult, "menambah activity") as { id: string; name: string }[];
     const sourceRows = inserted.flatMap((activity) => {
-      const match = prev.activities.get(normalizeName(activity.name as string));
-      const copied = match ? prev.sources.get(match.id) : undefined;
+      const copied = prevByName.get(normalizeName(activity.name))?.sources;
       const template = copied && copied.length > 0 ? copied : DEFAULT_SOURCES;
-      return template.map((source) => ({ ...source, activity_id: activity.id as string }));
+      return template.map((source) => ({ ...source, activity_id: activity.id }));
     });
     checkMaybe(await db.from("activity_sources").insert(sourceRows), "menambah sumber activity");
   }
@@ -148,36 +140,24 @@ export async function syncWeek(isoWeek: IsoWeek): Promise<SyncResult> {
   };
 }
 
-async function loadPreviousWeek(prev: IsoWeek) {
-  const db = getSupabase();
-  const activities = new Map<string, PrevActivity>();
-  const sources = new Map<string, SourceTemplate[]>();
+// Activity week sebelumnya beserta sumbernya, dalam satu query. Kunci map: nama task (huruf kecil).
+async function loadPreviousWeek(prev: IsoWeek): Promise<Map<string, PrevActivity>> {
+  const result = await getSupabase()
+    .from("weeks")
+    .select("activities(name, style_mode, activity_sources(source_type, enabled, params))")
+    .eq("iso_year", prev.year)
+    .eq("iso_week", prev.week)
+    .maybeSingle<{
+      activities: { name: string; style_mode: StyleMode; activity_sources: SourceTemplate[] }[];
+    }>();
+  const data = checkMaybe(result, "membaca week sebelumnya");
 
-  const prevWeek = checkMaybe(
-    await db.from("weeks").select("id").eq("iso_year", prev.year).eq("iso_week", prev.week).maybeSingle(),
-    "membaca week sebelumnya",
-  );
-  if (!prevWeek) return { activities, sources };
-
-  const prevActivities = check(
-    await db.from("activities").select("id, name, style_mode").eq("week_id", prevWeek.id),
-    "membaca activity week sebelumnya",
-  ) as PrevActivity[];
-  for (const activity of prevActivities) activities.set(normalizeName(activity.name), activity);
-  if (prevActivities.length === 0) return { activities, sources };
-
-  const prevSources = check(
-    await db
-      .from("activity_sources")
-      .select("activity_id, source_type, enabled, params")
-      .in(
-        "activity_id",
-        prevActivities.map((activity) => activity.id),
-      ),
-    "membaca sumber week sebelumnya",
-  ) as (SourceTemplate & { activity_id: string })[];
-  for (const { activity_id, ...source } of prevSources) {
-    sources.set(activity_id, [...(sources.get(activity_id) ?? []), source]);
+  const byName = new Map<string, PrevActivity>();
+  for (const activity of data?.activities ?? []) {
+    byName.set(normalizeName(activity.name), {
+      style_mode: activity.style_mode,
+      sources: activity.activity_sources,
+    });
   }
-  return { activities, sources };
+  return byName;
 }
